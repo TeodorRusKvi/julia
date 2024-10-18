@@ -1,0 +1,17 @@
+2.
+When we make models we make assumptions about how the world works because
+the world is quite complex. We therefor simplify things by assuming that
+the world is linear, interdependence (that the variables are independent),
+normality, stationarity and homogenity.
+
+
+The process of comparing the outcome of historical data with the models
+prediction is called model validation.
+
+
+If the model output is vastly different from the real world system we 
+might have taken the wrong assumptions. The model can be overfitted to the
+historical data capturing too much noise or the model can be underfitting
+and therefor too simple to capture the complexity. When the outcome of
+model is underfitting the outcome is not captuing the underlying pattern
+in the data and the variance is too low to be true.
