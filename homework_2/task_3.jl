@@ -14,13 +14,16 @@ end
 
 function serve_customers(customers::Vector{Customer}, maxD::Float64, vehicleid::Int64, depots::Vector{Depot})
     servedids = Int[]
-    for depot in depots
-        for customer in customers
-            distance = sqrt((customer.X - depot.X)^2 + (customer.Y - depot.Y)^2)
-            if distance <= maxD
-                if customer.Vehicle == vehicleid
+    maxD_squared = maxD^2
+
+    for customer in customers
+        if customer.Vehicle == vehicleid && !customer.Served
+            for depot in depots
+                distance = sqrt((customer.X - depot.X)^2 + (customer.Y - depot.Y)^2)
+                if distance <= maxD_squared
                     customer.Served = true
                     push!(servedids, deepcopy(customer.id))
+                    break
                 end
             end
         end
@@ -45,3 +48,5 @@ depots = [
 
 served_ids = serve_customers(customers, max_distance, vehicle_id, depots)
 println("Served Customer IDs: ", served_ids)
+
+include(task_3.jl)
