@@ -6,7 +6,12 @@ normality, stationarity and homogenity.
 
 
 The process of comparing the outcome of historical data with the models
-prediction is called model validation.
+prediction is called model validation. Here we can use different metrics
+such as MAE, MAPE etc, these metrics can express by how much our model 
+output differ from the real world outcome.
+
+Correlated inspection is the method for testing historical data against
+the model output.
 
 
 If the model output is vastly different from the real world system we 
