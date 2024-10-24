@@ -1,0 +1,29 @@
+Full Period: A random number generator (RNG) with a full period means that it can 
+generate all possible numbers in its sequence before repeating. This is important 
+because it ensures that the RNG can produce a wide variety of numbers without 
+repeating too soon, which is crucial for simulations, cryptography, and other 
+applications where randomness is important.
+
+
+Importance: A full period ensures that the RNG can explore the entire space of possible 
+values, providing better statistical properties and reducing the risk of patterns or cycles 
+that could compromise the randomness.
+
+
+
+Purpose of a Seed
+Seed: A seed is an initial value used to start the random number generation process. 
+It determines the starting point in the sequence of random numbers.
+
+
+
+Purpose: The main purpose of using a seed is to ensure reproducibility. By using the same 
+seed, you can generate the same sequence of random numbers, which is useful for debugging, 
+testing, and sharing results.
+
+
+
+Without a Seed: If you do not specify a seed, the RNG will typically use a default seed, 
+which might be based on the current time or some other system state. This means that each 
+run of the program could produce different results, which is useful for generating truly 
+random sequences but not for reproducibility.
