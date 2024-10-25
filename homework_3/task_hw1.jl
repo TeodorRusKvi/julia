@@ -14,10 +14,12 @@ mutable struct QueueState
     state_times::Dict{Int, Float64}  # Time spent in each state
 end
 
+
 # Initialize queue state
-function initialize_queue_state()
+function init_queue_state()
     return QueueState(0, 0, 0.0, 0.0, 0.0, Dict{Int, Float64}())
 end
+
 
 function handle_event!(queue_state::QueueState, event::Event, max_service_capacity::Int, verbose::Bool=false)
     current_time = event.time
@@ -47,7 +49,7 @@ function handle_event!(queue_state::QueueState, event::Event, max_service_capaci
         else
             queue_state.queue_length += 1
         end
-    else
+    else #is departure
         if queue_state.queue_length > 0
             queue_state.queue_length -= 1
             # in_service remains the same because a customer from the queue is now being served
@@ -70,7 +72,7 @@ end
 
 # Function to simulate the queue system with verbosity option
 function simulate_queue(arrivals::Vector{Float64}, service_times::Vector{Float64}, max_service_capacity::Int, verbose::Bool=false)
-    queue_state = initialize_queue_state()
+    queue_state = init_queue_state()
     events = Vector{Event}()
 
     # Generate arrival events
@@ -132,5 +134,6 @@ end
 # Example usage with verbose output
 dist1 = [0.6, 0.3, 0.5, 0.2, 0.7, 0.3, 0.4] # Distribution of arrival times
 dist2 = [0.6, 0.8, 1.2, 0.6, 1.1, 0.6, 0.5] # Distribution of service times
+
 max_service_capacity = 1  # Assuming a single server
 queue_state, average_queue_length, average_queue_length_until_fifth = simulate_queue(dist1, dist2, max_service_capacity, true)
