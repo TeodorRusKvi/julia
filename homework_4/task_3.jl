@@ -63,12 +63,16 @@ function handle_event!(queue_state::QueueState, event::Event, max_service_capaci
         if queue_state.in_service[server_id] < max_service_capacity
             queue_state.in_service[server_id] += 1
         else
+            #Checks if there is space in the server queue
             if queue_state.queue_lengths[server_id] < max_queue_length
+                #If there is space the customer is added to the queue
                 queue_state.queue_lengths[server_id] += 1
             else 
                 #Find another server with space in the queue
                 for i in 1:length(queue_state.queue_lengths)
+                    #Iterates over all servers
                     if i != server_id && queue_state.queue_lengths[i] < max_queue_length
+                        #Append if found available cap
                         queue_state.queue_lengths[i] += 1
                         break
                     end
@@ -76,10 +80,13 @@ function handle_event!(queue_state::QueueState, event::Event, max_service_capaci
             end
         end
     else #is departure
+        #Checks if there is a customer in the queue
         if queue_state.queue_lengths[server_id] > 0
+            # Subtracts the customer from the  queue
             queue_state.queue_lengths[server_id] -= 1
             # in_service remains the same because a customer from the queue is now being served
         else
+            #If there are no customer in the queue the customer is being subtracted immediately 
             queue_state.in_service[server_id] -= 1
         end
     end
