@@ -1,5 +1,10 @@
+############################## IMPORT ###################################
+
 using Random
 using Distributions
+
+
+############################## STRUCTS ##################################
 
 # Event Struct to store arrivals and departures
 struct Event
@@ -92,47 +97,17 @@ function log_event_after(current_time::Float64, queue_state::QueueState, average
 end
 
 
-################ EVENT HANDLING #################################
-
-# Handle an arrival event
-function handle_arrival!(queue_state::QueueState, server::Server)
-    if server.in_service < server.max_capacity
-        server.in_service += 1
-    elseif server.in_queue < server.max_queue_length
-        server.in_queue += 1
-    else
-        for server in queue_state.servers
-            if server.id != server.id && server.in_queue < server.max_queue_length
-                server.in_queue += 1
-                break
-            end
-        end
-    end
-end
-
-
-# Handle a departure event
-function handle_departure!(server::Server)
-    if server.in_queue > 0
-        server.in_queue -= 1
-    else
-        server.in_service -= 1
-    end
-end
-
-
 ###################### UPDATE STATE TIMES ########################
 
 function update_state_times!(queue_state::QueueState, time_in_queue::Float64)
     # Update state times
-    current_state = sum(server.in_service + server.in_queue for server in queue_state.servers)
+    current_state = sum(server.in_queue for server in queue_state.servers)
     if haskey(queue_state.state_times, current_state)
         queue_state.state_times[current_state] += time_in_queue
     else
         queue_state.state_times[current_state] = time_in_queue
     end
 end
-
 
 
 ##################### GENERATE DISTRIBUTIONS #####################
@@ -186,6 +161,43 @@ function assign_least_loaded_server(queue_state::QueueState, num_servers::Int)
 end
 
 
+################ EVENT HANDLING #################################
+
+# Handle an arrival event
+function handle_arrival!(queue_state::QueueState, server::Server)
+    if server.in_service < server.max_capacity
+        server.in_service += 1
+    elseif server.in_queue < server.max_queue_length
+        server.in_queue += 1
+    else
+        # Check if any other server has space in the queue
+        placed_in_queue = false
+        for other_server in queue_state.servers
+            if other_server.id != server.id && other_server.in_queue < other_server.max_queue_length
+                other_server.in_queue += 1
+                placed_in_queue = true
+                break
+            end
+        end
+        # If no space was found in any queue, increment lost customers
+        # The lost customer is never assigned to a server
+        if !placed_in_queue
+            queue_state.lost_customers += 1
+        end
+    end
+end
+
+
+# Handle a departure event
+function handle_departure!(server::Server)
+    if server.in_queue > 0 #If there are someone in the queue
+        server.in_queue -= 1 # subtracts one from the queue
+    else #If there are no one in the queue
+        server.in_service -= 1 #We subtract one from the service
+    end
+end
+
+
 ############################### SIMULATION ################################
 
 # Simulate the queue system
@@ -197,14 +209,15 @@ function simulate_queue(arrivals::Vector{Float64}, service_times::Vector{Float64
 
     # Generate arrival and departure events
     for i in 1:length(arrivals)
-        arrival_time = sum(arrivals[1:i])
+        arrival_time = sum(arrivals[1:i]) # Extracting the corresponding arrival time
         #server_id = assign_least_loaded_server(queue_state, num_servers)
         server_id = rand(1:num_servers)  # Randomly assign a server
-        customer_id = i  # Assign a unique customer ID
+        customer_id = i  # Assign a unique customer ID from the for-loop
         push!(events, Event(arrival_time, true, server_id, event_id_counter, customer_id))  # Arrival event
         event_id_counter += 1
 
         # Calculate departure time for this arrival
+        # Departure time is the max value of arrival and last departure time of a given server
         departure_time = max(arrival_time, last_departure_times[server_id]) + service_times[i]
         last_departure_times[server_id] = departure_time
         push!(events, Event(departure_time, false, server_id, event_id_counter, customer_id))  # Departure event
@@ -297,8 +310,8 @@ println("Generated Service Times: ", service_times)
 ########################## SIMULATION #################################
 
 simulate_queue(
-dist1, 
-dist2, 
+arrival_times, 
+service_times, 
 num_servers, 
 max_service_capacity, 
 max_queue_length, 
