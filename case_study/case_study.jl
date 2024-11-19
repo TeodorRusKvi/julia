@@ -2,7 +2,7 @@
 
 using Random
 using Distributions
-
+using JSON
 
 ############################## STRUCTS ##################################
 
@@ -37,19 +37,19 @@ end
 ########################### STATE INITIALIZING #############################
 
 # Initialize servers
-function init_servers(num_servers::Int, max_capacity::Int, max_queue_length::Int)
+function init_servers(num_servers::Int, max_server_capacity::Int, max_queue_length::Int)
     return [Server(
         i, 
         0, 
         0, 
-        max_capacity, 
+        max_server_capacity, 
         max_queue_length
         ) for i in 1:num_servers]
 end
 
 # Initialize queue state
-function init_queue_state(num_servers::Int, max_capacity::Int, max_queue_length::Int)
-    servers = init_servers(num_servers, max_capacity, max_queue_length)
+function init_queue_state(num_servers::Int, max_server_capacity::Int, max_queue_length::Int)
+    servers = init_servers(num_servers, max_server_capacity, max_queue_length)
     return QueueState(
         servers, 
         0.0, 
@@ -132,7 +132,7 @@ end
 
 ######################### CALCULATE STEADY STATE ##########################
 
-function calculate_steady_state(avg_queue_lengths::Vector{Float64}, current_avg_queue_length::Float64, current_time::Float64; threshold::Float64=0.1)
+function calculate_steady_state(avg_queue_lengths::Vector{Float64}, current_avg_queue_length::Float64, current_time::Float64, threshold::Float64)
     if length(avg_queue_lengths) < 5
         return (Float64[], nothing)
     end
@@ -149,13 +149,14 @@ function calculate_steady_state(avg_queue_lengths::Vector{Float64}, current_avg_
     return (deviations, steady_state_time)
 end
 
-function log_deviations(event_ids::Vector{Int}, deviations::Vector{Float64})
+function log_deviations(deviations::Vector{Float64})
     println("<br />Deviations:")
     for deviation in enumerate(deviations)
         #if i <= length(event_ids)
-        println("Event ID: $(event_ids[i]), Deviation: $deviation")
+        println("Deviation: $deviation")
     end
 end
+
 
 ############################ SERVER ALLOCATION ############################
 
@@ -211,157 +212,145 @@ function handle_departure!(server::Server)
 end
 
 
-############################### SIMULATION ################################
+############################### EVENT GENERATING ################################
 
-# Simulate the queue system
-function simulate_queue(arrival_times::Vector{Float64}, service_times::Vector{Float64}, num_servers::Int, max_capacity::Int, max_queue_length::Int, time_limit::Float64, verbose::Bool=false)
-    queue_state = init_queue_state(num_servers, max_capacity, max_queue_length)
+# Generate arrival and departure events
+function generate_events(arrival_times, service_times, num_servers, use_random=false)
     events = Vector{Event}()
     event_id_counter = 1
     last_departure_times = zeros(Float64, num_servers)
-    # Start time of the while loop
-    current_time = 0.0
-    customer_id = 1
     max_departure_time = 0.0
 
-    # Continue generating events until the time limit is reached
-    while current_time < time_limit
-        # Randomly select an arrival time from the generated arrival_times vector
-        arrival_time = rand(arrival_times)
-        
-        # Randomly select a service time from the generated service_times vector
-        service_time = rand(service_times)
-        
-        # Update the current time with the randomly selected arrival time
-        current_time += arrival_time
-        
-        # Break the loop if the current time exceeds the time limit
-        if current_time > time_limit
-            println("Time limit reached: $time_limit")
-            break
+    for i in 1:length(arrival_times)
+        # Determine arrival time based on the use_random flag
+        if use_random
+            # Randomly select an arrival time
+            arrival_time = sum(rand(arrival_times) for _ in 1:i)
+            # Randomly select a service time
+            service_time = rand(service_times)
+        else
+            # Use cumulative sum for non-randomized arrival times
+            arrival_time = sum(arrival_times[1:i])
+            # Use the service time in order
+            service_time = service_times[i]
         end
-        
-        # Randomly assign a server
         server_id = rand(1:num_servers)
-        
-        
-        # Create an arrival event
-        push!(events, Event(current_time, true, server_id, event_id_counter, customer_id))
+        customer_id = i
+        push!(events, Event(arrival_time, true, server_id, event_id_counter, customer_id))
         event_id_counter += 1
 
-        # Calculate departure time for this arrival
-        departure_time = max(current_time, last_departure_times[server_id]) + service_time
+        departure_time = max(arrival_time, last_departure_times[server_id]) + service_time
         last_departure_times[server_id] = departure_time
 
         # Update the max departure time
         max_departure_time = max(max_departure_time, departure_time)
-        
-        # Create a departure event
+
         push!(events, Event(departure_time, false, server_id, event_id_counter, customer_id))
         event_id_counter += 1
-
-        customer_id += 1
-
     end
 
-    # Sort events by time
     sort!(events, by = e -> e.time)
-
     sorted_events = [Event(event.time, event.is_arrival, event.server_id, index, event.customer_id) for (index, event) in enumerate(events)]
-    steady_state_time = nothing
-    # Process events
-    for event in sorted_events
-        current_time = event.time
-
-        server = queue_state.servers[event.server_id]
-
-        # Calculate time delta since the last event
-        time_in_queue = current_time - queue_state.last_event_time
-
-        # Update total queue time
-        queue_state.total_queue_time += sum(server.in_queue for server in queue_state.servers) * time_in_queue
-        
-        # Update state times
-        update_state_times!(queue_state, time_in_queue)
-
-        # Log the state before processing the event
-        if verbose
-            log_event_before(event, current_time, queue_state)
-        end
-
-        # Handle the event
-        if event.is_arrival
-            handle_arrival!(queue_state, server)
-        else
-            handle_departure!(server)
-        end
-
-        # Update last event time
-        queue_state.last_event_time = current_time
-
-        # Update total simulation time
-        queue_state.total_time = current_time
-
-        # Calculate the current average queue length
-        current_avg_queue_length = queue_state.total_queue_time / queue_state.total_time
-        
-        # Store the current average queue length
-        push!(queue_state.avg_queue_lengths, current_avg_queue_length)
-
-        # Check for steady state
-        deviations, steady_state_time = calculate_steady_state(queue_state.avg_queue_lengths, current_avg_queue_length, current_time)
-        if verbose
-            log_deviations(event.event_id, deviations)
-        end
-        if steady_state_time !== nothing
-            println("<br />Steady state reached at time: $steady_state_time")
-            break
-        end
-        # Log the state after processing the event
-        if verbose
-            log_event_after(current_time, queue_state, current_avg_queue_length)
-        end
-    end
-    # Return the total planned simulation time
-    return max_departure_time
+    
+    return sorted_events, max_departure_time
 end
 
-########################### PARAMETERS #################################
 
-# Example usage with verbose output
-dist1 = [0.6, 0.3, 0.5, 0.2, 0.7, 0.3, 0.4] # Distribution of arrival times
-dist2 = [0.6, 0.8, 1.2, 0.6, 1.1, 0.6, 0.5] # Distribution of service times
+############################## EVENT PROCESSING ###############################
 
-num_servers = 1
-max_service_capacity = 1
-max_queue_length = 10000
-time_limit = 30.0
+# Process each event
+function process_event!(event, queue_state, time_limit, threshold, verbose)
+    current_time = event.time
 
-num_customers = 20
-arrival_mean = 0.1  # Faster arrival rate
-service_mean = 1.0  # Slower service rate
+    if current_time > time_limit
+        println("Time limit reached: $time_limit")
+        return false
+    end
+
+    server = queue_state.servers[event.server_id]
+    time_in_queue = current_time - queue_state.last_event_time
+    queue_state.total_queue_time += sum(server.in_queue for server in queue_state.servers) * time_in_queue
+    update_state_times!(queue_state, time_in_queue)
+
+    if verbose
+        log_event_before(event, current_time, queue_state)
+    end
+
+    if event.is_arrival
+        handle_arrival!(queue_state, server)
+    else
+        handle_departure!(server)
+    end
+
+    queue_state.last_event_time = current_time
+    queue_state.total_time = current_time
+
+    current_avg_queue_length = queue_state.total_queue_time / queue_state.total_time
+    push!(queue_state.avg_queue_lengths, current_avg_queue_length)
+
+    if verbose
+        log_event_after(current_time, queue_state, current_avg_queue_length)
+    end
+
+
+    deviations, steady_state_time = calculate_steady_state(queue_state.avg_queue_lengths, current_avg_queue_length, current_time, threshold)
+    if verbose
+        log_deviations(deviations)
+    end
+    if steady_state_time !== nothing
+        println("Steady state reached at time: $steady_state_time")
+        return false
+    end
+
+    return true
+end
+
+
+########################### GENERATOR FOR DISTRIBUTIONS #############################
+
+arrival_mean = 0.833
+service_mean_a = 0.8
+service_mean_b = 1.2048
+num_customers = 10000
 
 arrival_times, service_times = generate_distributions(
     num_customers, 
     arrival_mean, 
-    service_mean
+    service_mean_b
     )
 
-#println("Generated Arrival Times: ", arrival_times)
-#println("Generated Service Times: ", service_times)
+
+########################### PARAMETERS #################################
+
+num_servers_a = 3
+num_servers_b = 2
+max_server_capacity = 1
+max_queue_length = 10000
+time_limit = 100.0
+threshold=0.05
 
 
 ########################## SIMULATION #################################
 
-total_planned_time = simulate_queue(
-dist1, 
-dist2, 
-num_servers, 
-max_service_capacity, 
+# Main simulation function
+function simulate_queue(arrivals::Vector{Float64}, service_times::Vector{Float64}, num_servers::Int, max_server_capacity::Int, max_queue_length::Int, time_limit::Float64, threshold::Float64, verbose::Bool=false)
+    queue_state = init_queue_state(num_servers, max_server_capacity, max_queue_length)
+    events, total_planned_time = generate_events(arrivals, service_times, num_servers, true)
+    for event in events
+        if !process_event!(event, queue_state, time_limit, threshold, verbose)
+            break
+        end
+    end
+    println("Total planned simulation time: ", total_planned_time)
+end
+
+simulate_queue(
+arrival_times, 
+service_times, 
+num_servers_b, 
+max_server_capacity, 
 max_queue_length,
 time_limit,
+threshold,
 true,
 )
-
-print("\n")
-println("Total planned simulation time: ", total_planned_time)
