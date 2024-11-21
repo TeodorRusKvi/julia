@@ -11,12 +11,6 @@ Sorted state times (State -> Time Spent):
 
 L_CloakFloat=λ⋅W=0.8333⋅14.2439≈11.88 customers
 
-For CloakFloat (3 employees):
-
-Total operations per hour = 50 (arrival rate)
-
-Total cost per hour = 50 * €23.50 = €1175
-
 
 2. CloakSloth
 Total waiting time in queue: 9.456811961483302
@@ -30,9 +24,33 @@ Sorted state times (State -> Time Spent):
 
 L_ClothSloth=λ⋅W=0.8333⋅6.8273≈5.68 customers
 
+Steady state condition is set to rach a 0.10 deviation in avg queue length 
+in the last 5 run.
+
+This is reached in 9.5 for the CloakSloth and 11.13 for the CloakFloat.
+The average queue length is higher for the CloakSloth, 1.38. but the average  
+number of customers is lower, 5.58. The CloakFloat has a 
+average queue length on 0.78 but the average number of customers in the 
+syste, is 11.88.
+
+
+b.
+
+For CloakFloat (3 employees):
+
+Total operations per hour = 50 (arrival rate)
+
+Total cost per hour = 50 * €23.50 = €1175
+
+
 For ClothesSloth (2 employees):
 
 Total operations per hour = 50 (arrival rate)
 
 Total cost per hour = 50 * €20.90 = €1045
 
+CloakSloth has the lowest waiting time in the system and it reaches a
+steady state in under half of the time compared the cloackFloat. Therefor
+there are half as much customers in the system in a given time. This can
+be because there are a lower service time per customer even tough there
+are one less service station for helping customers.
