@@ -4,6 +4,7 @@ using Random
 using Distributions
 using JSON
 
+
 ############################## STRUCTS ##################################
 
 # Event Struct to store arrivals and departures
@@ -33,6 +34,7 @@ mutable struct QueueState
     state_times::Dict{Int, Float64}  # Time spent in each state
     avg_queue_lengths::Vector{Float64}
 end
+
 
 ########################### STATE INITIALIZING #############################
 
@@ -155,23 +157,6 @@ function log_deviations(deviations::Vector{Float64})
         #if i <= length(event_ids)
         println("Deviation: $deviation")
     end
-end
-
-
-############################ SERVER ALLOCATION ############################
-
-function assign_least_loaded_server(queue_state::QueueState, num_servers::Int)
-    min_load = Inf
-    selected_server = 1
-    for i in 1:num_servers
-        load = queue_state.in_service[i] + queue_state.queue_lengths[i]
-        if load < min_load
-            min_load = load
-            selected_server = i
-        end
-    end
-    println("Selected server: $selected_server with load: $min_load")  # Debug statement
-    return selected_server
 end
 
 
